@@ -16,6 +16,7 @@ import com.sk89q.worldguard.protection.regions.ProtectedRegion;
 import com.sk89q.worldguard.protection.regions.RegionContainer;
 import com.sk89q.worldguard.session.SessionManager;
 import net.goldtreeservers.worldguardextraflags.listeners.*;
+import net.goldtreeservers.worldguardextraflags.paper.PaperEntityListener;
 import net.goldtreeservers.worldguardextraflags.wg.handlers.*;
 import org.bstats.bukkit.Metrics;
 import org.bukkit.World;
@@ -86,6 +87,7 @@ public class WorldGuardExtraFlagsPlugin extends JavaPlugin
 			flagRegistry.register(Flags.CHUNK_UNLOAD);
 			flagRegistry.register(Flags.ITEM_DURABILITY);
 			flagRegistry.register(Flags.JOIN_LOCATION);
+			flagRegistry.register(Flags.SMASH_ATTACK);
 		}
 		catch (Exception e)
 		{
@@ -103,8 +105,7 @@ public class WorldGuardExtraFlagsPlugin extends JavaPlugin
 			{
 				this.protocolLibHelper = new ProtocolLibHelper(this, protocolLibPlugin);
 			}
-		}
-		catch(Throwable ignore)
+		} catch (Throwable ignore)
 		{
 		}
 	}
@@ -138,7 +139,12 @@ public class WorldGuardExtraFlagsPlugin extends JavaPlugin
 		this.getServer().getPluginManager().registerEvents(new EntityListener(this.worldGuardPlugin, this.regionContainer, this.sessionManager), this);
 
 		this.worldEditPlugin.getWorldEdit().getEventBus().register(new WorldEditListener(this.worldGuardPlugin, this.regionContainer, this.sessionManager));
-		
+
+		if (this.isClassLoaded("io.papermc.paper.event.entity.EntityAttemptSmashAttackEvent"))
+		{
+			this.getServer().getPluginManager().registerEvents(new PaperEntityListener(this.worldGuardPlugin, this.sessionManager, this.regionContainer), this);
+		}
+
 		if (this.protocolLibHelper != null)
 		{
 			try
@@ -161,6 +167,18 @@ public class WorldGuardExtraFlagsPlugin extends JavaPlugin
 		}
 		
 		this.setupMetrics();
+	}
+
+	private boolean isClassLoaded(String className)
+	{
+		try {
+			Class.forName(className);
+			return true;
+		}
+		catch (ClassNotFoundException e)
+		{
+			return false;
+		}
 	}
 
 	public void doUnloadChunkFlagCheck(org.bukkit.World world)
@@ -195,8 +213,8 @@ public class WorldGuardExtraFlagsPlugin extends JavaPlugin
 	{
 		final int bStatsPluginId = 7301;
 		
-        Metrics metrics = new Metrics(this, bStatsPluginId);
-        metrics.addCustomChart(new Metrics.AdvancedPie("flags_used", () ->
+		Metrics metrics = new Metrics(this, bStatsPluginId);
+		metrics.addCustomChart(new Metrics.AdvancedPie("flags_used", () ->
 		{
 			Map<Flag<?>, Boolean> valueMap = WorldGuardExtraFlagsPlugin.FLAGS.stream().collect(Collectors.toMap(v -> v, v -> false));
 
